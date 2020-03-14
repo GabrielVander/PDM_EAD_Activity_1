@@ -136,7 +136,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private Boolean checkDraw() {
-        return getTilesByState(TileState.EMPTY).isEmpty();
+        return getEmptyTiles().isEmpty();
     }
 
     private void updateScores() {
@@ -169,7 +169,7 @@ public class MainActivity extends AppCompatActivity {
             add(7);
         }};
 
-        return getTilesByState(TileState.EMPTY)
+        return getEmptyTiles()
                 .stream()
                 .filter(tile->preferredIndexes.contains(tile.getIndex()))
                 .findFirst()
@@ -177,7 +177,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private Optional<PlayableTile> getWinnableTiles(TileState state) {
-        return getTilesByState(TileState.EMPTY)
+        return getEmptyTiles()
                 .stream()
                 .filter(playableTile -> isWinnable(state, playableTile))
                 .findAny();
@@ -215,9 +215,9 @@ public class MainActivity extends AppCompatActivity {
                 .collect(Collectors.toList());
     }
 
-    private List<PlayableTile> getTilesByState(TileState state) {
+    private List<PlayableTile> getEmptyTiles() {
         return playableTiles.stream()
-                .filter(tile -> tile.getState().equals(state))
+                .filter(tile -> tile.getState().equals(TileState.EMPTY))
                 .collect(Collectors.toList());
     }
 
