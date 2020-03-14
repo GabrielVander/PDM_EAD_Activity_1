@@ -15,8 +15,9 @@ import com.example.pdmead1.model.TileState;
 import com.example.pdmead1.model.Turn;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RequiresApi(api = Build.VERSION_CODES.N)
@@ -64,7 +65,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void playableTileClick(PlayableTile tile) {
         if (tile.getState().equals(TileState.EMPTY)) {
-            tile.mark(R.drawable.x, TileState.PLAYER);
+            tile.mark(R.drawable.x, TileState.HUMAN);
             endTurn();
         }
     }
@@ -95,7 +96,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private MatchState getMatchState() {
-        if(checkWin(TileState.PLAYER)) return MatchState.PLAYER_WON;
+        if(checkWin(TileState.HUMAN)) return MatchState.PLAYER_WON;
         else if(checkWin(TileState.APP)) return MatchState.APP_WON;
         else if(checkDraw()) return MatchState.DRAW;
         return MatchState.ONGOING;
@@ -114,26 +115,24 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private boolean checkDiagonals(TileState tileState) {
-        return checkSequence(tileState, 0, 4, 8) ||
-                checkSequence(tileState, 2, 4, 6);
+        return checkSequence(tileState, Arrays.asList(0, 4, 8)) ||
+                checkSequence(tileState, Arrays.asList(2, 4, 6));
     }
 
     private boolean checkColumns(TileState tileState) {
-        return checkSequence(tileState, 0, 3, 6) ||
-                checkSequence(tileState, 1, 4, 7) ||
-                checkSequence(tileState, 2, 5, 7);
+        return checkSequence(tileState, Arrays.asList(0, 3, 6)) ||
+                checkSequence(tileState,Arrays.asList( 1, 4, 7)) ||
+                checkSequence(tileState,Arrays.asList( 2, 5, 7));
     }
 
-    private boolean checkRows(TileState tileState) {
-        return checkSequence(tileState, 0, 1, 2) ||
-                checkSequence(tileState, 3, 4, 5) ||
-                checkSequence(tileState, 6, 7, 8);
+    private boolean checkRows(TileState state) {
+        return checkSequence(state, Arrays.asList(0, 1, 2)) ||
+                checkSequence(state, Arrays.asList(3, 4, 5)) ||
+                checkSequence(state, Arrays.asList(6, 7, 8));
     }
 
-    private boolean checkSequence(TileState tileState, int firstIndex, int secondIndex, int thirdIndex) {
-        return playableTiles.get(firstIndex).getState() == tileState &&
-                playableTiles.get(secondIndex).getState() == tileState &&
-                playableTiles.get(thirdIndex).getState() == tileState;
+    private boolean checkSequence(TileState state, List<Integer> sequence) {
+        return sequence.stream().allMatch(index-> playableTiles.get(index).getState().equals(state));
     }
 
     private Boolean checkDraw() {
@@ -146,13 +145,74 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void play() {
-        getRandomEmptyTile().mark(R.drawable.circle, TileState.APP);
+        getBestTile().mark(R.drawable.circle, TileState.APP);
         endTurn();
     }
 
-    private PlayableTile getRandomEmptyTile() {
-        List<PlayableTile> emptyTiles = getTilesByState(TileState.EMPTY);
-        return emptyTiles.get(new Random().nextInt(emptyTiles.size()));
+    private PlayableTile getBestTile() {
+        return getWinnableTiles(TileState.APP)
+                .orElseGet(() -> getWinnableTiles(TileState.HUMAN)
+                        .orElseGet(this::getPreferredTile));
+
+    }
+
+    private PlayableTile getPreferredTile() {
+        final List<Integer> preferredIndexes = new ArrayList<Integer>(){{
+            add(4);
+            add(0);
+            add(2);
+            add(6);
+            add(8);
+            add(1);
+            add(3);
+            add(5);
+            add(7);
+        }};
+
+        return getTilesByState(TileState.EMPTY)
+                .stream()
+                .filter(tile->preferredIndexes.contains(tile.getIndex()))
+                .findFirst()
+                .get();
+    }
+
+    private Optional<PlayableTile> getWinnableTiles(TileState state) {
+        return getTilesByState(TileState.EMPTY)
+                .stream()
+                .filter(playableTile -> isWinnable(state, playableTile))
+                .findAny();
+    }
+
+    private boolean isWinnable(TileState state, PlayableTile playableTile) {
+        return isWinnableInSequence(state, getOtherTilesInSequence(playableTile, getTilesByRow(playableTile.getRow()))) ||
+        isWinnableInSequence(state, getOtherTilesInSequence(playableTile, getTilesByCol(playableTile.getCol())));
+    }
+
+    private List<PlayableTile> getOtherTilesInSequence(PlayableTile playableTile, List<PlayableTile> sequence) {
+        return sequence
+                .stream()
+                .filter(tile -> tile.getIndex() != playableTile.getIndex())
+                .collect(Collectors.toList());
+    }
+
+    private boolean isWinnableInSequence(TileState state, List<PlayableTile> tilesByRow) {
+        return checkSequence(state,
+                tilesByRow
+                    .stream()
+                    .map(PlayableTile::getIndex)
+                    .collect(Collectors.toList()));
+    }
+
+    private List<PlayableTile> getTilesByRow(int row) {
+        return playableTiles.stream()
+                .filter(tile -> tile.getRow() == row)
+                .collect(Collectors.toList());
+    }
+
+    private List<PlayableTile> getTilesByCol(int col) {
+        return playableTiles.stream()
+                .filter(tile -> tile.getCol() == col)
+                .collect(Collectors.toList());
     }
 
     private List<PlayableTile> getTilesByState(TileState state) {

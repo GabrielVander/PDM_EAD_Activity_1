@@ -42,4 +42,12 @@ public class PlayableTile {
     public void setTile(ImageView tile) {
         this.tile = tile;
     }
+
+    public int getRow(){
+        return index / 3;
+    }
+
+    public int getCol() {
+        return index % 3;
+    }
 }
