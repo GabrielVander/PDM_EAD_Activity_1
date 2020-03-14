@@ -185,7 +185,23 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean isWinnable(TileState state, PlayableTile playableTile) {
         return isWinnableInSequence(state, getOtherTilesInSequence(playableTile, getTilesByRow(playableTile.getRow()))) ||
-        isWinnableInSequence(state, getOtherTilesInSequence(playableTile, getTilesByCol(playableTile.getCol())));
+                isWinnableInSequence(state, getOtherTilesInSequence(playableTile, getTilesByCol(playableTile.getCol()))) ||
+                isWinnableInSequence(state, getOtherTilesInSequence(playableTile, getTilesByPrimaryDiagonal())) ||
+                isWinnableInSequence(state, getOtherTilesInSequence(playableTile, getTilesBySecondaryDiagonal()));
+    }
+
+    private List<PlayableTile> getTilesByPrimaryDiagonal() {
+        return playableTiles
+                .stream()
+                .filter(tile -> tile.getCol() == tile.getRow())
+                .collect(Collectors.toList());
+    }
+
+    private List<PlayableTile> getTilesBySecondaryDiagonal() {
+        return playableTiles
+                .stream()
+                .filter(tile -> tile.getCol() + tile.getRow() == 2)
+                .collect(Collectors.toList());
     }
 
     private List<PlayableTile> getOtherTilesInSequence(PlayableTile playableTile, List<PlayableTile> sequence) {
