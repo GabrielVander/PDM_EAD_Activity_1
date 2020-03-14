@@ -6,93 +6,77 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.os.Build;
 import android.os.Bundle;
 import android.widget.Button;
-import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.pdmead1.model.MatchState;
+import com.example.pdmead1.model.PlayableTile;
 import com.example.pdmead1.model.TileState;
+import com.example.pdmead1.model.Turn;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
 
 @RequiresApi(api = Build.VERSION_CODES.N)
 public class MainActivity extends AppCompatActivity {
     private TextView lblPlayerScore;
     private TextView lblAppScore;
-    private List<ImageView> playableTiles;
+    private List<PlayableTile> playableTiles;
 
-    List<TileState> board = new ArrayList<TileState>() {
-        {
-            add(TileState.EMPTY);
-            add(TileState.EMPTY);
-            add(TileState.EMPTY);
-            add(TileState.EMPTY);
-            add(TileState.EMPTY);
-            add(TileState.EMPTY);
-            add(TileState.EMPTY);
-            add(TileState.EMPTY);
-            add(TileState.EMPTY);
-        }
-    };
-
-    private Integer playerScore = 0;
+    private Integer humanScore = 0;
     private Integer appScore = 0;
 
-    private Boolean isPlayersTurn = true;
+    private Turn turn = Turn.HUMAN;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        playableTiles = new ArrayList<ImageView>() {
+        playableTiles = new ArrayList<PlayableTile>() {
             {
-                add(findViewById( R.id.playableTile0));
-                add(findViewById( R.id.playableTile1 ));
-                add(findViewById( R.id.playableTile2));
-                add(findViewById( R.id.playableTile3 ));
-                add(findViewById( R.id.playableTile4));
-                add(findViewById( R.id.playableTile5));
-                add(findViewById( R.id.playableTile6));
-                add(findViewById( R.id.playableTile7));
-                add(findViewById( R.id.playableTile8));
+                add(new PlayableTile(0, findViewById(R.id.playableTile0)));
+                add(new PlayableTile(1, findViewById(R.id.playableTile1)));
+                add(new PlayableTile(2, findViewById(R.id.playableTile2)));
+                add(new PlayableTile(3, findViewById(R.id.playableTile3)));
+                add(new PlayableTile(4, findViewById(R.id.playableTile4)));
+                add(new PlayableTile(5, findViewById(R.id.playableTile5)));
+                add(new PlayableTile(6, findViewById(R.id.playableTile6)));
+                add(new PlayableTile(7, findViewById(R.id.playableTile7)));
+                add(new PlayableTile(8, findViewById(R.id.playableTile8)));
             }
         };
+
         lblPlayerScore = findViewById(R.id.lblPlayerScore);
         lblAppScore = findViewById(R.id.lblAppScore);
 
         Button btnRestart = findViewById(R.id.btnRestart);
         Button btnResetScore = findViewById(R.id.btnResetScore);
 
-        playableTiles.forEach(tile -> tile.setOnClickListener(view -> playableTileClick((ImageView) view)));
+        playableTiles.forEach(tile -> tile.getTile().setOnClickListener(view -> playableTileClick(tile)));
 
         btnRestart.setOnClickListener(v -> restartMatch());
         btnResetScore.setOnClickListener(v -> resetScores());
 
     }
 
-    private void playableTileClick(ImageView tile) {
-        int tileIndex = playableTiles.indexOf(tile);
-
-        if (board.get(tileIndex).equals(TileState.EMPTY)) {
-            tile.setImageResource(R.drawable.x);
-            board.set(tileIndex, TileState.PLAYER);
-
+    private void playableTileClick(PlayableTile tile) {
+        if (tile.getState().equals(TileState.EMPTY)) {
+            tile.mark(R.drawable.x, TileState.PLAYER);
             endTurn();
         }
     }
 
     private void switchTurn() {
-        isPlayersTurn = !isPlayersTurn;
+        turn = turn.equals(Turn.HUMAN) ? Turn.APP : Turn.HUMAN;
     }
 
     private void updateMatchState() {
         switch (getMatchState()) {
             case PLAYER_WON:
-                playerScore++;
+                humanScore++;
                 finishMatch("The Player won");
                 break;
 
@@ -105,8 +89,8 @@ public class MainActivity extends AppCompatActivity {
                 finishMatch("The game tied");
                 break;
 
-            case APP_TURN:
-                play();
+            case ONGOING:
+                if(turn.equals(Turn.APP)) play();
         }
     }
 
@@ -114,7 +98,7 @@ public class MainActivity extends AppCompatActivity {
         if(checkWin(TileState.PLAYER)) return MatchState.PLAYER_WON;
         else if(checkWin(TileState.APP)) return MatchState.APP_WON;
         else if(checkDraw()) return MatchState.DRAW;
-        return isPlayersTurn ? MatchState.PLAYER_TURN : MatchState.APP_TURN;
+        return MatchState.ONGOING;
     }
 
     private void finishMatch(String message) {
@@ -147,32 +131,34 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private boolean checkSequence(TileState tileState, int firstIndex, int secondIndex, int thirdIndex) {
-        return board.get(firstIndex) == tileState &&
-                board.get(secondIndex) == tileState &&
-                board.get(thirdIndex) == tileState;
+        return playableTiles.get(firstIndex).getState() == tileState &&
+                playableTiles.get(secondIndex).getState() == tileState &&
+                playableTiles.get(thirdIndex).getState() == tileState;
     }
 
     private Boolean checkDraw() {
-        for (TileState tileState : board) {
-            if(tileState == TileState.EMPTY) return false;
-        }
-        return true;
+        return getTilesByState(TileState.EMPTY).isEmpty();
     }
 
     private void updateScores() {
-        lblPlayerScore.setText(String.valueOf(playerScore));
+        lblPlayerScore.setText(String.valueOf(humanScore));
         lblAppScore.setText(String.valueOf(appScore));
     }
 
     private void play() {
-        int randomIndex = new Random().nextInt(9);
-
-        while (!board.get(randomIndex).equals(TileState.EMPTY)) randomIndex = new Random().nextInt(9);
-
-        playableTiles.get(randomIndex).setImageResource(R.drawable.circle);
-        board.set(randomIndex, TileState.APP);
-
+        getRandomEmptyTile().mark(R.drawable.circle, TileState.APP);
         endTurn();
+    }
+
+    private PlayableTile getRandomEmptyTile() {
+        List<PlayableTile> emptyTiles = getTilesByState(TileState.EMPTY);
+        return emptyTiles.get(new Random().nextInt(emptyTiles.size()));
+    }
+
+    private List<PlayableTile> getTilesByState(TileState state) {
+        return playableTiles.stream()
+                .filter(tile -> tile.getState().equals(state))
+                .collect(Collectors.toList());
     }
 
     private void endTurn() {
@@ -181,22 +167,21 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void resetScores() {
-        playerScore = 0;
+        humanScore = 0;
         appScore = 0;
         updateScores();
     }
 
     private void restartMatch() {
         playableTiles.forEach(playableTile-> {
-            playableTile.setImageResource(R.drawable.empty);
-            playableTile.setOnClickListener(tile -> playableTileClick((ImageView) tile));
+            playableTile.mark(R.drawable.empty, TileState.EMPTY);
+            playableTile.getTile().setOnClickListener(tile -> playableTileClick(playableTile));
         });
-        Collections.fill(board, TileState.EMPTY);
-        isPlayersTurn = true;
+        turn = Turn.HUMAN;
     }
 
     private void stopListeners() {
-        playableTiles.forEach(playableTile -> playableTile.setOnClickListener(null));
+        playableTiles.forEach(playableTile -> playableTile.getTile().setOnClickListener(null));
     }
 
 }
